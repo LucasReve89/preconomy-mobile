@@ -1,0 +1,15 @@
+.agents
+.claude
+.github
+.vscode
+.gga
+node_modules
+engram
+claude-code-subagents-collection-main
+gentleman-guardian-angel
+preconomy-frontend
+preconomy-backend
+preconomy-landing
+preconomy-ai
+*.md
+!README.md

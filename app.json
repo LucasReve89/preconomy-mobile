@@ -1,0 +1,60 @@
+{
+  "expo": {
+    "name": "PREconomy",
+    "slug": "preconomy-mobile",
+    "version": "1.0.0",
+    "scheme": "preconomy",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0f172a"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.preconomy.mobile",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Esta aplicación necesita acceso a la cámara para escanear códigos QR de tarjetas.",
+        "NSPhotoLibraryUsageDescription": "Esta aplicación necesita acceso a la galería para seleccionar imágenes.",
+        "CFBundleDisplayName": "PREconomy"
+      },
+      "config": {
+        "usesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#10b981",
+        "foregroundImage": "./assets/android-icon-foreground.png"
+      },
+      "package": "com.preconomy.mobile",
+      "versionCode": 1,
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-web-browser",
+      "@react-native-community/datetimepicker",
+      "expo-asset",
+      "expo-build-properties"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "af30acfd-b0a6-4d5b-825a-99ed53588944"
+      }
+    },
+    "owner": "lucasreve"
+  }
+}
