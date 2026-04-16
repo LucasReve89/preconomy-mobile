@@ -1,0 +1,26 @@
+name: Feature request
+description: Propose a new feature or enhancement
+title: "[Feature] "
+labels: ["type:feature"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope / area affected
+      description: Forecast, Cards, Auth, Argentina, Dashboard, Mobile, Backend, Infra
