@@ -27,6 +27,8 @@ const GOOGLE_WEB_CLIENT_ID =
   '809244958120-sia4uaul3khtsmtc55j84o8hh3simmbk.apps.googleusercontent.com'
 const GOOGLE_IOS_CLIENT_ID =
   '809244958120-fosmlb8tde85d8dt2fa41roj5idqvd95.apps.googleusercontent.com'
+const GOOGLE_ANDROID_CLIENT_ID =
+  '809244958120-0pttrjh5km5ger4cd0k5oakt8it9r8cf.apps.googleusercontent.com'
 
 interface LoginScreenProps {
   navigation: any
@@ -41,11 +43,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const { login, loginWithGoogle, loading, error, clearError } = useAuthStore()
 
   // Google OAuth — get access token, then fetch user info to get id_token
-  // androidClientId uses webClientId as fallback until a real Android OAuth client is registered in GCP
   const [request, response, promptAsync] = Google.useAuthRequest({
     iosClientId: GOOGLE_IOS_CLIENT_ID,
     webClientId: GOOGLE_WEB_CLIENT_ID,
-    androidClientId: GOOGLE_WEB_CLIENT_ID,
+    androidClientId: GOOGLE_ANDROID_CLIENT_ID,
   })
 
   React.useEffect(() => {
@@ -163,25 +164,23 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
           </View>
 
           <View style={styles.formContainer}>
-            {/* Google Sign In Button — hidden on Android until Android OAuth client is configured */}
-            {Platform.OS !== 'android' && (
-              <TouchableOpacity
-                style={[styles.googleButton, isLoading && styles.disabledButton]}
-                onPress={() => promptAsync()}
-                disabled={isLoading || !request}
-              >
-                {googleLoading ? (
-                  <ActivityIndicator color="#000000" />
-                ) : (
-                  <>
-                    <Text style={styles.googleIcon}>G</Text>
-                    <Text style={styles.googleButtonText}>
-                      Continuar con Google
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            )}
+            {/* Google Sign In Button */}
+            <TouchableOpacity
+              style={[styles.googleButton, isLoading && styles.disabledButton]}
+              onPress={() => promptAsync()}
+              disabled={isLoading || !request}
+            >
+              {googleLoading ? (
+                <ActivityIndicator color="#000000" />
+              ) : (
+                <>
+                  <Text style={styles.googleIcon}>G</Text>
+                  <Text style={styles.googleButtonText}>
+                    Continuar con Google
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
 
             {/* Separator */}
             <View style={styles.separator}>
