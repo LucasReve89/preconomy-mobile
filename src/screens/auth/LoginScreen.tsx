@@ -42,11 +42,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
   const { login, loginWithGoogle, loading, error, clearError } = useAuthStore()
 
-  // Google OAuth — get access token, then fetch user info to get id_token
+  // androidClientId redirect override: expo-auth-session defaults to <packageName>:/oauthredirect,
+  // but app.json scheme only registers intent filters for `preconomy` and the reverse-client-id form.
+  // Without this override, Google's redirect lands in the browser instead of the app.
   const [request, response, promptAsync] = Google.useAuthRequest({
     iosClientId: GOOGLE_IOS_CLIENT_ID,
     webClientId: GOOGLE_WEB_CLIENT_ID,
     androidClientId: GOOGLE_ANDROID_CLIENT_ID,
+    redirectUri: Platform.OS === 'android'
+      ? 'com.googleusercontent.apps.809244958120-0pttrjh5km5ger4cd0k5oakt8it9r8cf:/oauth2redirect'
+      : undefined,
   })
 
   React.useEffect(() => {
