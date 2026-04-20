@@ -3,7 +3,10 @@
     "name": "PREconomy",
     "slug": "preconomy-mobile",
     "version": "1.0.0",
-    "scheme": "preconomy",
+    "scheme": [
+      "preconomy",
+      "com.googleusercontent.apps.809244958120-0pttrjh5km5ger4cd0k5oakt8it9r8cf"
+    ],
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
