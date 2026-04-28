@@ -17,6 +17,7 @@ import {
   Image,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { colors } from '../../theme'
 import * as WebBrowser from 'expo-web-browser'
 import * as Google from 'expo-auth-session/providers/google'
 import { useAuthStore } from '../../stores/authStore'
@@ -201,7 +202,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                 value={email}
                 onChangeText={setEmail}
                 placeholder="tu@email.com"
-                placeholderTextColor="#64748b"
+                placeholderTextColor={colors.mute2}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -217,7 +218,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                   value={password}
                   onChangeText={setPassword}
                   placeholder="Contraseña"
-                  placeholderTextColor="#64748b"
+                  placeholderTextColor={colors.mute2}
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -272,7 +273,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: colors.bg,
   },
   keyboardAvoid: {
     flex: 1,
@@ -293,7 +294,7 @@ const styles = StyleSheet.create({
   },
   subtitleText: {
     fontSize: 16,
-    color: '#94a3b8',
+    color: colors.mute,
     textAlign: 'center',
   },
   formContainer: {
@@ -327,10 +328,10 @@ const styles = StyleSheet.create({
   separatorLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#334155',
+    backgroundColor: colors.line2,
   },
   separatorText: {
-    color: '#64748b',
+    color: colors.mute2,
     paddingHorizontal: 16,
     fontSize: 14,
   },
@@ -340,17 +341,17 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#e2e8f0',
+    color: colors.text,
     marginBottom: 8,
   },
   textInput: {
-    backgroundColor: '#1e293b',
+    backgroundColor: colors.bgSoft,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.line2,
     borderRadius: 8,
     padding: 16,
     fontSize: 16,
-    color: '#ffffff',
+    color: colors.text,
   },
   passwordContainer: {
     position: 'relative',
@@ -364,7 +365,7 @@ const styles = StyleSheet.create({
     top: 16,
   },
   passwordToggleText: {
-    color: '#10b981',
+    color: colors.brand,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -372,12 +373,12 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   errorText: {
-    color: '#ef4444',
+    color: colors.danger,
     fontSize: 14,
     textAlign: 'center',
   },
   loginButton: {
-    backgroundColor: '#10b981',
+    backgroundColor: colors.brand,
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
@@ -397,11 +398,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   registerText: {
-    color: '#94a3b8',
+    color: colors.mute,
     fontSize: 14,
   },
   registerLink: {
-    color: '#10b981',
+    color: colors.brand,
     fontSize: 14,
     fontWeight: '600',
   },

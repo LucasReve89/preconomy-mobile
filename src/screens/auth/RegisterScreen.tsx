@@ -17,6 +17,7 @@ import {
   Image
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { colors } from '../../theme'
 import { useAuthStore } from '../../stores/authStore'
 
 interface RegisterScreenProps {
@@ -243,7 +244,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a', // slate-900
+    backgroundColor: colors.bg,
   },
   keyboardAvoid: {
     flex: 1,
@@ -264,7 +265,7 @@ const styles = StyleSheet.create({
   },
   subtitleText: {
     fontSize: 16,
-    color: '#94a3b8', // slate-400
+    color: colors.mute,
     textAlign: 'center',
   },
   formContainer: {
@@ -276,17 +277,17 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#e2e8f0', // slate-200
+    color: colors.text,
     marginBottom: 8,
   },
   textInput: {
-    backgroundColor: '#1e293b', // slate-800
+    backgroundColor: colors.bgSoft,
     borderWidth: 1,
-    borderColor: '#334155', // slate-700
+    borderColor: colors.line2,
     borderRadius: 8,
     padding: 16,
     fontSize: 16,
-    color: '#ffffff',
+    color: colors.text,
   },
   passwordContainer: {
     position: 'relative',
@@ -300,7 +301,7 @@ const styles = StyleSheet.create({
     top: 16,
   },
   passwordToggleText: {
-    color: '#10b981', // emerald-500
+    color: colors.brand,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -308,12 +309,12 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   errorText: {
-    color: '#ef4444', // red-500
+    color: colors.danger,
     fontSize: 14,
     textAlign: 'center',
   },
   registerButton: {
-    backgroundColor: '#10b981', // emerald-500
+    backgroundColor: colors.brand,
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
@@ -333,11 +334,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loginText: {
-    color: '#94a3b8', // slate-400
+    color: colors.mute,
     fontSize: 14,
   },
   loginLink: {
-    color: '#10b981', // emerald-500
+    color: colors.brand,
     fontSize: 14,
     fontWeight: '600',
   },

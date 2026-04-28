@@ -6,6 +6,7 @@ import React from 'react'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { createStackNavigator } from '@react-navigation/stack'
 import { Platform } from 'react-native'
+import { colors } from '../theme'
 
 import { DashboardScreen } from '../screens/dashboard/DashboardScreen'
 import { TransactionsScreen } from '../screens/transactions/TransactionsScreen'
@@ -70,11 +71,11 @@ export const MainNavigator: React.FC = () => {
         tabBarIcon: ({ focused }) => (
           <TabIcon name={route.name} focused={focused} />
         ),
-        tabBarActiveTintColor: '#10b981', // emerald-500
-        tabBarInactiveTintColor: '#64748b', // slate-500
+        tabBarActiveTintColor: colors.brand,
+        tabBarInactiveTintColor: colors.mute,
         tabBarStyle: {
-          backgroundColor: '#1e293b', // slate-800
-          borderTopColor: '#334155', // slate-700
+          backgroundColor: colors.bgSoft,
+          borderTopColor: colors.line2,
           height: Platform.OS === 'ios' ? 90 : 60,
           paddingBottom: Platform.OS === 'ios' ? 30 : 10,
           paddingTop: 10,
