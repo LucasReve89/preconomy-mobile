@@ -492,7 +492,12 @@ class MobileAPIClient {
   }
 
   // ---- Financial Health ----
-  async getFinancialHealthScore(month?: number, year?: number): Promise<{ score: number } | null> {
+  async getFinancialHealthScore(month?: number, year?: number): Promise<{
+    score: number;
+    overallScore?: number;
+    categoryScores?: Record<string, number>;
+    recommendations?: string[];
+  } | null> {
     try {
       const params = new URLSearchParams()
       if (month !== undefined) params.append('month', month.toString())
@@ -501,7 +506,12 @@ class MobileAPIClient {
       const response = await this.get<any>(`/v1/financial-health/score${query}`)
       const data = response.data
       const score = data?.overallScore ?? data?.score ?? 0
-      return { score }
+      return {
+        score,
+        overallScore: data?.overallScore,
+        categoryScores: data?.categoryScores,
+        recommendations: data?.recommendations,
+      }
     } catch (error) {
       console.warn('Health score fetch failed:', error)
       return null
