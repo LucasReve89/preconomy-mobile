@@ -1,6 +1,10 @@
 /**
  * Dashboard Screen - Main overview of user's finances
- * Uses real data from backend endpoints
+ * Uses real data from backend endpoints.
+ *
+ * Batch 3 refactor: added HealthScoreCard, KpiList, UrgentList, CategoriasBar.
+ * Preserved: balance card, FX rates, transactions list, animated FAB, refresh, logout.
+ * Token migration: inline color literals → colors.* from theme.
  */
 
 import React, { useEffect, useState, useCallback, useRef } from 'react'
@@ -22,6 +26,12 @@ import { useAuthStore } from '../../stores/authStore'
 import { AnimatedLogo } from '../../components/AnimatedLogo'
 import { apiClient } from '../../api/api-client'
 import type { Expense, Income } from '../../types'
+import { colors } from '../../theme'
+
+import { HealthScoreCard } from './components/HealthScoreCard'
+import { KpiList } from './components/KpiList'
+import { UrgentList } from './components/UrgentList'
+import { CategoriasBar } from './components/CategoriasBar'
 
 interface DashboardData {
   totalBalance: number
@@ -31,7 +41,12 @@ interface DashboardData {
     USD: number
     EUR: number
   }
-  recentTransactions: { description: string; amount: number; type: 'income' | 'expense'; date: string }[]
+  recentTransactions: {
+    description: string
+    amount: number
+    type: 'income' | 'expense'
+    date: string
+  }[]
 }
 
 export const DashboardScreen: React.FC = () => {
@@ -41,21 +56,22 @@ export const DashboardScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false)
   const [loading, setLoading] = useState(true)
 
-  // FAB animations
+  // D33: Health score state (NEW — non-blocking, renders "—" on failure)
+  const [healthScore, setHealthScore] = useState<number | null>(null)
+
+  // FAB animations — preserved verbatim
   const fabScale = useRef(new Animated.Value(1)).current
   const fabBreath = useRef(new Animated.Value(1)).current
   const auraOpacity = useRef(new Animated.Value(0.15)).current
   const auraScale = useRef(new Animated.Value(1)).current
 
   useEffect(() => {
-    // Subtle breathing on the button itself
     const breath = Animated.loop(
       Animated.sequence([
         Animated.timing(fabBreath, { toValue: 1.08, duration: 1500, useNativeDriver: true }),
         Animated.timing(fabBreath, { toValue: 1, duration: 1500, useNativeDriver: true }),
       ])
     )
-    // Aura expanding and fading
     const aura = Animated.loop(
       Animated.sequence([
         Animated.parallel([
@@ -83,26 +99,33 @@ export const DashboardScreen: React.FC = () => {
 
   const loadDashboardData = useCallback(async () => {
     try {
-      const [variableRes, fixedRes, incomesRes, financialContext] =
+      const now = new Date()
+      const currentMonth = now.getMonth() + 1 // API uses 1-based month
+      const currentYear = now.getFullYear()
+
+      // D33: Added health score to Promise.all (non-blocking — catch(() => null))
+      const [variableRes, fixedRes, incomesRes, financialContext, healthData] =
         await Promise.all([
           apiClient.getVariableExpenses(0, 100).catch(() => ({ content: [] })),
           apiClient.getFixedExpenses(0, 100).catch(() => ({ content: [] })),
           apiClient.getIncomes().catch(() => []),
           apiClient.getArgentineFinancialContext().catch(() => null),
+          apiClient.getFinancialHealthScore(currentMonth, currentYear).catch(() => null),
         ])
 
-      const now = new Date()
-      const currentMonth = now.getMonth()
-      const currentYear = now.getFullYear()
+      // Update health score state
+      setHealthScore(healthData?.score ?? null)
 
-      // Parse date from various backend formats (string "YYYY-MM-DD", array [Y,M,D,...], etc.)
+      const month0 = now.getMonth()
+      const year = now.getFullYear()
+
+      // Date parsing (preserved verbatim)
       const parseDate = (dateVal: any): Date => {
         if (!dateVal) return new Date(0)
         if (Array.isArray(dateVal)) {
           return new Date(dateVal[0], (dateVal[1] || 1) - 1, dateVal[2] || 1)
         }
         if (typeof dateVal === 'string') {
-          // Force local timezone by appending T00:00:00
           const d = new Date(dateVal.split('T')[0] + 'T00:00:00')
           return isNaN(d.getTime()) ? new Date(0) : d
         }
@@ -119,7 +142,7 @@ export const DashboardScreen: React.FC = () => {
 
       const isCurrentMonth = (dateVal: any) => {
         const d = parseDate(dateVal)
-        return d.getMonth() === currentMonth && d.getFullYear() === currentYear
+        return d.getMonth() === month0 && d.getFullYear() === year
       }
 
       const allExpenses = [
@@ -136,7 +159,7 @@ export const DashboardScreen: React.FC = () => {
         .filter((i: any) => isCurrentMonth(i.date))
         .reduce((sum: number, i: any) => sum + (i.amount || 0), 0)
 
-      // Build recent transactions (last 5)
+      // Recent transactions (last 5 — preserved)
       const recent = [
         ...allExpenses.map((e: any) => ({
           description: e.description,
@@ -178,7 +201,7 @@ export const DashboardScreen: React.FC = () => {
     loadDashboardData()
   }, [loadDashboardData])
 
-  // Reload when screen gets focus (throttled — skip if loaded within 10s)
+  // Reload on focus (throttled — skip if loaded within 10s) — preserved
   const lastLoadRef = useRef(0)
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
@@ -197,7 +220,7 @@ export const DashboardScreen: React.FC = () => {
   const handleLogout = async () => {
     Alert.alert(
       'Cerrar Sesión',
-      '¿Estás seguro que quieres cerrar sesión?',
+      '¿Estás seguro que querés cerrar sesión?',
       [
         { text: 'Cancelar', style: 'cancel' },
         { text: 'Cerrar Sesión', onPress: logout, style: 'destructive' },
@@ -233,20 +256,32 @@ export const DashboardScreen: React.FC = () => {
   }
 
   const balance = dashboardData?.totalBalance || 0
+  const savingsPct =
+    (dashboardData?.monthlyIncome ?? 0) > 0
+      ? Math.round((balance / (dashboardData?.monthlyIncome ?? 1)) * 100)
+      : 0
+
+  const now = new Date()
+  const MONTHS_ES = [
+    'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+    'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic',
+  ]
+  const currentMonthLabel = MONTHS_ES[now.getMonth()] ?? ''
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
         style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#10b981"
+            tintColor={colors.brand}
           />
         }
       >
-        {/* Logo Bar */}
+        {/* Logo Bar — preserved */}
         <View style={styles.logoBar}>
           <View style={styles.logoRow}>
             <Image
@@ -261,28 +296,26 @@ export const DashboardScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Header */}
+        {/* Header — preserved */}
         <View style={styles.header}>
-          <View>
-            <Text style={styles.welcomeText}>Hola, {user?.username}</Text>
-            <Text style={styles.dateText}>
-              {new Date().toLocaleDateString('es-AR', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })}
-            </Text>
-          </View>
+          <Text style={styles.welcomeText}>Hola, {user?.username}</Text>
+          <Text style={styles.dateText}>
+            {now.toLocaleDateString('es-AR', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            })}
+          </Text>
         </View>
 
-        {/* Balance Card */}
+        {/* Balance Card — preserved */}
         <View style={styles.balanceCard}>
           <Text style={styles.balanceLabel}>Balance del Mes</Text>
           <Text
             style={[
               styles.balanceAmount,
-              { color: balance >= 0 ? '#10b981' : '#ef4444' },
+              { color: balance >= 0 ? colors.success : colors.danger },
             ]}
           >
             {formatCurrency(balance)}
@@ -294,23 +327,34 @@ export const DashboardScreen: React.FC = () => {
           ) : null}
         </View>
 
-        {/* Quick Stats */}
-        <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <Text style={styles.statLabel}>Ingresos</Text>
-            <Text style={[styles.statAmount, { color: '#10b981' }]}>
-              {formatCurrency(dashboardData?.monthlyIncome || 0)}
-            </Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statLabel}>Gastos</Text>
-            <Text style={[styles.statAmount, { color: '#ef4444' }]}>
-              {formatCurrency(dashboardData?.monthlyExpenses || 0)}
-            </Text>
-          </View>
+        {/* D33: HealthScoreCard — NEW section */}
+        <View style={styles.section}>
+          <HealthScoreCard
+            score={healthScore}
+            monthlyIncome={dashboardData?.monthlyIncome ?? 0}
+            monthlyExpenses={dashboardData?.monthlyExpenses ?? 0}
+            savings={Math.max(balance, 0)}
+            month={currentMonthLabel}
+          />
         </View>
 
-        {/* Currency Rates */}
+        {/* D33: KpiList — replaces old 2-stat layout, keeps same data */}
+        <View style={styles.section}>
+          <KpiList
+            income={dashboardData?.monthlyIncome ?? 0}
+            expenses={dashboardData?.monthlyExpenses ?? 0}
+            savings={Math.max(balance, 0)}
+            savingsPct={savingsPct}
+            fxRate={dashboardData?.currencyRates?.USD ?? null}
+          />
+        </View>
+
+        {/* D33: UrgentList — v1 renders with empty array (no dues data in RN yet) */}
+        <View style={styles.section}>
+          <UrgentList items={[]} />
+        </View>
+
+        {/* Currency Rates — preserved (FX rates display) */}
         {dashboardData?.currencyRates?.USD ? (
           <View style={styles.currencyCard}>
             <Text style={styles.currencyTitle}>Cotizaciones</Text>
@@ -331,7 +375,12 @@ export const DashboardScreen: React.FC = () => {
           </View>
         ) : null}
 
-        {/* Recent Transactions */}
+        {/* D33: CategoriasBar — v1 renders empty state (no categorías data in RN yet) */}
+        <View style={styles.section}>
+          <CategoriasBar categories={[]} totalAmount={0} />
+        </View>
+
+        {/* Recent Transactions — preserved */}
         {dashboardData?.recentTransactions &&
           dashboardData.recentTransactions.length > 0 && (
             <View style={styles.recentSection}>
@@ -357,7 +406,7 @@ export const DashboardScreen: React.FC = () => {
                   <Text
                     style={[
                       styles.recentAmount,
-                      { color: tx.type === 'income' ? '#10b981' : '#ef4444' },
+                      { color: tx.type === 'income' ? colors.success : colors.danger },
                     ]}
                   >
                     {tx.type === 'income' ? '+' : '-'}
@@ -370,7 +419,7 @@ export const DashboardScreen: React.FC = () => {
 
       </ScrollView>
 
-      {/* FAB with aura */}
+      {/* FAB with aura — preserved verbatim */}
       <View style={styles.fabWrapper}>
         <Animated.View
           style={[
@@ -402,20 +451,19 @@ export const DashboardScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: colors.bg,
   },
   scrollView: {
     flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 100, // space for FAB
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     gap: 16,
-  },
-  loadingLogo: {
-    width: 120,
-    height: 120,
   },
   logoBar: {
     flexDirection: 'row',
@@ -437,7 +485,7 @@ const styles = StyleSheet.create({
   logoTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#e2e8f0',
+    color: colors.text,
   },
   header: {
     paddingHorizontal: 20,
@@ -446,36 +494,38 @@ const styles = StyleSheet.create({
   welcomeText: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: colors.text,
     marginBottom: 4,
   },
   dateText: {
     fontSize: 14,
-    color: '#94a3b8',
+    color: colors.mute,
   },
   logoutButton: {
-    backgroundColor: '#1e293b',
+    backgroundColor: colors.card,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
   },
   logoutText: {
-    color: '#10b981',
+    color: colors.brand,
     fontSize: 14,
     fontWeight: '600',
   },
   balanceCard: {
-    backgroundColor: '#1e293b',
+    backgroundColor: colors.card,
     marginHorizontal: 20,
     marginTop: 8,
-    marginBottom: 12,
+    marginBottom: 4,
     padding: 18,
     borderRadius: 12,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.line,
   },
   balanceLabel: {
     fontSize: 16,
-    color: '#94a3b8',
+    color: colors.mute,
     marginBottom: 8,
   },
   balanceAmount: {
@@ -485,42 +535,26 @@ const styles = StyleSheet.create({
   },
   balanceUSD: {
     fontSize: 14,
-    color: '#94a3b8',
+    color: colors.mute,
   },
-  statsContainer: {
-    flexDirection: 'row',
-    marginHorizontal: 20,
-    gap: 12,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#1e293b',
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#94a3b8',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  statAmount: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  currencyCard: {
-    backgroundColor: '#1e293b',
+  section: {
     marginHorizontal: 20,
     marginTop: 12,
-    marginBottom: 12,
+  },
+  currencyCard: {
+    backgroundColor: colors.card,
+    marginHorizontal: 20,
+    marginTop: 12,
+    marginBottom: 0,
     padding: 16,
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.line,
   },
   currencyTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: colors.text,
     marginBottom: 10,
   },
   currencyRates: {
@@ -532,31 +566,34 @@ const styles = StyleSheet.create({
   },
   currencyLabel: {
     fontSize: 14,
-    color: '#94a3b8',
+    color: colors.mute,
     marginBottom: 4,
   },
   currencyValue: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#10b981',
+    color: colors.brand,
   },
   recentSection: {
     marginHorizontal: 20,
+    marginTop: 12,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: colors.text,
     marginBottom: 8,
   },
   recentItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#1e293b',
+    backgroundColor: colors.card,
     padding: 10,
     borderRadius: 8,
     marginBottom: 6,
+    borderWidth: 1,
+    borderColor: colors.line,
   },
   recentLeft: {
     flexDirection: 'row',
@@ -566,12 +603,12 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   recentDesc: {
-    color: '#ffffff',
+    color: colors.text,
     fontSize: 14,
     fontWeight: '500',
   },
   recentDate: {
-    color: '#64748b',
+    color: colors.mute2,
     fontSize: 11,
     marginTop: 2,
   },
@@ -593,14 +630,14 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#10b981',
+    backgroundColor: colors.brand,
   },
   fab: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#10b981',
-    shadowColor: '#10b981',
+    backgroundColor: colors.brand,
+    shadowColor: colors.brand,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.4,
     shadowRadius: 8,
@@ -614,7 +651,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   fabText: {
-    color: '#ffffff',
+    color: colors.bg,
     fontSize: 30,
     fontWeight: '600',
     marginTop: -2,

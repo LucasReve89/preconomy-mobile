@@ -492,13 +492,20 @@ class MobileAPIClient {
   }
 
   // ---- Financial Health ----
-  async getFinancialHealthScore(month?: number, year?: number): Promise<any> {
-    const params = new URLSearchParams()
-    if (month) params.append('month', month.toString())
-    if (year) params.append('year', year.toString())
-    const query = params.toString() ? `?${params.toString()}` : ''
-    const response = await this.get(`/v1/financial-health/score${query}`)
-    return response.data
+  async getFinancialHealthScore(month?: number, year?: number): Promise<{ score: number } | null> {
+    try {
+      const params = new URLSearchParams()
+      if (month !== undefined) params.append('month', month.toString())
+      if (year !== undefined) params.append('year', year.toString())
+      const query = params.toString() ? `?${params.toString()}` : ''
+      const response = await this.get<any>(`/v1/financial-health/score${query}`)
+      const data = response.data
+      const score = data?.overallScore ?? data?.score ?? 0
+      return { score }
+    } catch (error) {
+      console.warn('Health score fetch failed:', error)
+      return null
+    }
   }
 
   // ---- Card Cycles ----
