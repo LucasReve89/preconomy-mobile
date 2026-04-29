@@ -1,37 +1,177 @@
 /**
- * Transactions Screen - View expenses and income with real balance
+ * TransactionsScreen — SectionList-based transactions view.
+ *
+ * Phase F rewrite (dashboard-redesign-tx SDD, M24):
+ *  - FlatList → SectionList with relative-date sections (Hoy / Ayer / Lun 21 …)
+ *  - TxSummaryCards strip above SectionList (Ingresos / Gastos / Neto)
+ *  - TxFilterChips row (Todas / Gastos / Ingresos / Cuotas)
+ *  - TxSectionHeader for section headers
+ *  - Foundation theme tokens — zero inline hex color literals
+ *  - PRESERVED: long-press to delete, pull-to-refresh, all data hooks,
+ *    loading state, focus-based reload, navigation to AddTransaction
+ *
+ * NOTE — Cuotas filter:
+ *   The current data fetch does NOT include installment expenses (no
+ *   getInstallmentExpenses call). The Cuotas chip renders but will show an
+ *   empty list until dashboard-redesign-rn-installments-fetch SDD lands.
  */
 
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useMemo } from 'react'
 import {
   View,
   Text,
-  FlatList,
+  SectionList,
   StyleSheet,
   RefreshControl,
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  Image,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import { apiClient } from '../../api/api-client'
 import { useAuthStore } from '../../stores/authStore'
 import { AnimatedLogo } from '../../components/AnimatedLogo'
-import type { Expense, Income, Transaction } from '../../types'
+import { colors } from '../../theme'
+import {
+  TxSectionHeader,
+  TxSummaryCards,
+  TxFilterChips,
+  type TxFilterType,
+} from './components'
+import {
+  groupTransactionsByRelativeDate,
+  type GroupableTransaction,
+} from '../../lib/date-grouping'
+import type { Transaction } from '../../types'
 
-type FilterType = 'all' | 'expense' | 'income'
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+/**
+ * Extended Transaction with originalType for Cuotas filter support.
+ * originalType is populated from installment data when available.
+ */
+interface TxItem extends Transaction, GroupableTransaction {
+  originalType?: 'fixed' | 'variable' | 'installment' | 'income'
+}
+
+interface SectionData {
+  title: string
+  data: TxItem[]
+}
+
+// ─── Category emoji mapping ────────────────────────────────────────────────────
+
+const CATEGORY_EMOJI: Record<string, string> = {
+  Supermercado: '🛒',
+  Servicios: '💡',
+  Salidas: '🍽️',
+  Transporte: '🚇',
+  Shopping: '🛍️',
+  Salud: '⚕️',
+  Educación: '📚',
+  Ingreso: '💰',
+  Sueldo: '💼',
+  Hogar: '🏠',
+  Entretenimiento: '🎬',
+  Viajes: '✈️',
+}
+
+function getEmoji(item: TxItem): string {
+  if (item.category && CATEGORY_EMOJI[item.category]) {
+    return CATEGORY_EMOJI[item.category]
+  }
+  return item.type === 'income' ? '💰' : '💳'
+}
+
+// ─── TransactionRow component ─────────────────────────────────────────────────
+
+interface TransactionRowProps {
+  item: TxItem
+  onLongPress: (item: TxItem) => void
+}
+
+const TransactionRow: React.FC<TransactionRowProps> = ({ item, onLongPress }) => {
+  const formatCurrency = (amount: number): string =>
+    new Intl.NumberFormat('es-AR', {
+      style: 'currency',
+      currency: 'ARS',
+      maximumFractionDigits: 0,
+    }).format(amount)
+
+  const isIncome = item.type === 'income'
+  const amountColor = isIncome ? colors.success : colors.danger
+  const amountPrefix = isIncome ? '+' : '−'
+  const emoji = getEmoji(item)
+
+  return (
+    <TouchableOpacity
+      style={styles.transactionItem}
+      onLongPress={() => onLongPress(item)}
+      activeOpacity={0.7}
+    >
+      {/* Icon */}
+      <View
+        style={[
+          styles.transactionIcon,
+          {
+            backgroundColor: isIncome
+              ? `${colors.success}20`
+              : `${colors.danger}20`,
+          },
+        ]}
+      >
+        <Text style={{ fontSize: 18 }}>{emoji}</Text>
+      </View>
+
+      {/* Info */}
+      <View style={styles.transactionInfo}>
+        <View style={styles.transactionDescRow}>
+          <Text style={styles.transactionDesc} numberOfLines={1}>
+            {item.description}
+          </Text>
+          {item.originalType === 'fixed' && (
+            <View style={styles.badgeFijo}>
+              <Text style={styles.badgeFijoText}>FIJO</Text>
+            </View>
+          )}
+          {item.originalType === 'installment' && (
+            <View style={styles.badgeCuota}>
+              <Text style={styles.badgeCuotaText}>CUOTA</Text>
+            </View>
+          )}
+        </View>
+        <Text style={styles.transactionCategory} numberOfLines={1}>
+          {item.category || 'Sin categoría'}
+          {item.paymentMethod ? ` · ${item.paymentMethod}` : ''}
+        </Text>
+      </View>
+
+      {/* Amount */}
+      <Text style={[styles.transactionAmount, { color: amountColor }]}>
+        {amountPrefix}
+        {formatCurrency(item.amount)}
+      </Text>
+    </TouchableOpacity>
+  )
+}
+
+// ─── TransactionsScreen ────────────────────────────────────────────────────────
 
 export const TransactionsScreen: React.FC = () => {
   const navigation = useNavigation<any>()
   const { user } = useAuthStore()
-  const [transactions, setTransactions] = useState<Transaction[]>([])
+
+  const [transactions, setTransactions] = useState<TxItem[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [filter, setFilter] = useState<FilterType>('all')
+  const [filter, setFilter] = useState<TxFilterType>('all')
   const [totalIncome, setTotalIncome] = useState(0)
   const [totalExpenses, setTotalExpenses] = useState(0)
+
+  // ─── Data loading (PRESERVED from original) ────────────────────────────────
+
+  const lastLoadRef = React.useRef(0)
 
   const loadTransactions = useCallback(async () => {
     try {
@@ -66,44 +206,72 @@ export const TransactionsScreen: React.FC = () => {
         return `${y}-${m}-${day}`
       }
 
-      const allExpenses: Transaction[] = [
-        ...(variableRes.content || []),
-        ...(fixedRes.content || []),
-      ].map((e: any, index: number) => ({
-        id: e.expense_id ?? e.id ?? index,
-        description: e.description,
-        amount: e.amount,
-        date: toDateString(e.date),
-        type: 'expense' as const,
-        category: e.expense_type?.expense_type ?? e.expenseType?.expense_type,
-        paymentMethod: e.payment_method?.payment_method ?? e.paymentMethodDTO?.payment_method,
-      }))
-
-      const allIncomes: Transaction[] = (incomesRes || []).map((i: any, index: number) => ({
-        id: i.id ?? index + 10000,
-        description: i.income_source,
-        amount: i.amount,
-        date: toDateString(i.date),
-        type: 'income' as const,
-        category: 'Ingreso',
-      }))
-
-      const merged = [...allExpenses, ...allIncomes].sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      const allVariableExpenses: TxItem[] = (variableRes.content || []).map(
+        (e: any, index: number) => ({
+          id: e.expense_id ?? e.id ?? index,
+          description: e.description,
+          amount: e.amount,
+          date: toDateString(e.date),
+          type: 'expense' as const,
+          category:
+            e.expense_type?.expense_type ?? e.expenseType?.expense_type,
+          paymentMethod:
+            e.payment_method?.payment_method ??
+            e.paymentMethodDTO?.payment_method,
+          originalType: 'variable' as const,
+        }),
       )
+
+      const allFixedExpenses: TxItem[] = (fixedRes.content || []).map(
+        (e: any, index: number) => ({
+          id: e.expense_id ?? e.id ?? index + 5000,
+          description: e.description,
+          amount: e.amount,
+          date: toDateString(e.date),
+          type: 'expense' as const,
+          category:
+            e.expense_type?.expense_type ?? e.expenseType?.expense_type,
+          paymentMethod:
+            e.payment_method?.payment_method ??
+            e.paymentMethodDTO?.payment_method,
+          originalType: 'fixed' as const,
+        }),
+      )
+
+      const allIncomes: TxItem[] = (incomesRes || []).map(
+        (i: any, index: number) => ({
+          id: i.id ?? index + 10000,
+          description: i.income_source,
+          amount: i.amount,
+          date: toDateString(i.date),
+          type: 'income' as const,
+          category: 'Ingreso',
+          originalType: 'income' as const,
+        }),
+      )
+
+      const merged: TxItem[] = [
+        ...allVariableExpenses,
+        ...allFixedExpenses,
+        ...allIncomes,
+      ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
       // Calculate monthly totals
       const monthlyIncome = allIncomes
         .filter((t) => {
           const d = new Date(t.date)
-          return d.getMonth() === currentMonth && d.getFullYear() === currentYear
+          return (
+            d.getMonth() === currentMonth && d.getFullYear() === currentYear
+          )
         })
         .reduce((sum, t) => sum + t.amount, 0)
 
-      const monthlyExpenses = allExpenses
+      const monthlyExpenses = [...allVariableExpenses, ...allFixedExpenses]
         .filter((t) => {
           const d = new Date(t.date)
-          return d.getMonth() === currentMonth && d.getFullYear() === currentYear
+          return (
+            d.getMonth() === currentMonth && d.getFullYear() === currentYear
+          )
         })
         .reduce((sum, t) => sum + t.amount, 0)
 
@@ -123,8 +291,7 @@ export const TransactionsScreen: React.FC = () => {
     loadTransactions()
   }, [loadTransactions])
 
-  // Reload when coming back from add screen (throttled — skip if loaded within 5s)
-  const lastLoadRef = React.useRef(0)
+  // Reload on focus — throttled to avoid double-fetch after navigation (PRESERVED)
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       if (Date.now() - lastLoadRef.current > 5000) {
@@ -139,7 +306,9 @@ export const TransactionsScreen: React.FC = () => {
     loadTransactions()
   }
 
-  const handleDelete = (item: Transaction) => {
+  // ─── Delete handler (PRESERVED — long-press) ───────────────────────────────
+
+  const handleDelete = (item: TxItem) => {
     Alert.alert(
       'Eliminar',
       `¿Eliminar "${item.description}"?`,
@@ -151,9 +320,9 @@ export const TransactionsScreen: React.FC = () => {
           onPress: async () => {
             try {
               if (item.type === 'income') {
-                await apiClient.deleteIncome(item.id)
+                await apiClient.deleteIncome(item.id as number)
               } else {
-                await apiClient.deleteVariableExpense(item.id)
+                await apiClient.deleteVariableExpense(item.id as number)
               }
               loadTransactions()
             } catch {
@@ -161,69 +330,40 @@ export const TransactionsScreen: React.FC = () => {
             }
           },
         },
-      ]
+      ],
     )
   }
 
-  const formatCurrency = (amount: number): string => {
-    return new Intl.NumberFormat('es-AR', {
-      style: 'currency',
-      currency: 'ARS',
-      maximumFractionDigits: 0,
-    }).format(amount)
-  }
+  // ─── Derived state ─────────────────────────────────────────────────────────
 
-  const formatDate = (dateStr: string): string => {
-    const date = new Date(dateStr + 'T00:00:00')
-    return date.toLocaleDateString('es-AR', {
-      day: '2-digit',
-      month: 'short',
-    })
-  }
+  const neto = totalIncome - totalExpenses
 
-  const filteredTransactions = transactions.filter((t) => {
-    if (filter === 'all') return true
-    return t.type === filter
-  })
+  /**
+   * Apply filter to merged transactions BEFORE grouping.
+   * Cuotas chip: filters by originalType === 'installment'.
+   * NOTE: installments are not fetched in this SDD — Cuotas will show empty
+   * until dashboard-redesign-rn-installments-fetch SDD adds the fetch.
+   */
+  const filteredTransactions = useMemo<TxItem[]>(() => {
+    if (filter === 'all') return transactions
+    if (filter === 'installment') {
+      return transactions.filter((t) => t.originalType === 'installment')
+    }
+    return transactions.filter((t) => t.type === filter)
+  }, [transactions, filter])
 
-  const balance = totalIncome - totalExpenses
+  /**
+   * Build SectionList sections from filtered transactions using the
+   * date-grouping helper (same logic as web version).
+   */
+  const sections = useMemo<SectionData[]>(() => {
+    return groupTransactionsByRelativeDate(filteredTransactions).map((g) => ({
+      title: g.label,
+      data: g.items,
+    }))
+  }, [filteredTransactions])
 
-  const renderTransaction = ({ item }: { item: Transaction }) => (
-    <TouchableOpacity
-      style={styles.transactionItem}
-      onLongPress={() => handleDelete(item)}
-    >
-      <View style={styles.transactionLeft}>
-        <View
-          style={[
-            styles.transactionIcon,
-            { backgroundColor: item.type === 'income' ? '#065f4620' : '#7f1d1d20' },
-          ]}
-        >
-          <Text style={{ fontSize: 18 }}>
-            {item.type === 'income' ? '📈' : '📉'}
-          </Text>
-        </View>
-        <View style={styles.transactionInfo}>
-          <Text style={styles.transactionDesc} numberOfLines={1}>
-            {item.description}
-          </Text>
-          <Text style={styles.transactionCategory}>
-            {item.category || 'Sin categoría'} · {formatDate(item.date)}
-          </Text>
-        </View>
-      </View>
-      <Text
-        style={[
-          styles.transactionAmount,
-          { color: item.type === 'income' ? '#10b981' : '#ef4444' },
-        ]}
-      >
-        {item.type === 'income' ? '+' : '-'}
-        {formatCurrency(item.amount)}
-      </Text>
-    </TouchableOpacity>
-  )
+  // ─── Loading state ─────────────────────────────────────────────────────────
 
   if (loading) {
     return (
@@ -235,11 +375,13 @@ export const TransactionsScreen: React.FC = () => {
     )
   }
 
+  // ─── Render ────────────────────────────────────────────────────────────────
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Movimientos</Text>
+        <Text style={styles.title}>Transacciones</Text>
         <TouchableOpacity
           style={styles.addButton}
           onPress={() => navigation.navigate('AddTransaction')}
@@ -248,69 +390,38 @@ export const TransactionsScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Balance card */}
-      <View style={styles.balanceCard}>
-        <View style={styles.balanceRow}>
-          <View style={styles.balanceItem}>
-            <Text style={styles.balanceLabel}>Ingresos</Text>
-            <Text style={[styles.balanceValue, { color: '#10b981' }]}>
-              {formatCurrency(totalIncome)}
-            </Text>
-          </View>
-          <View style={styles.balanceDivider} />
-          <View style={styles.balanceItem}>
-            <Text style={styles.balanceLabel}>Gastos</Text>
-            <Text style={[styles.balanceValue, { color: '#ef4444' }]}>
-              {formatCurrency(totalExpenses)}
-            </Text>
-          </View>
-          <View style={styles.balanceDivider} />
-          <View style={styles.balanceItem}>
-            <Text style={styles.balanceLabel}>Balance</Text>
-            <Text
-              style={[
-                styles.balanceValue,
-                { color: balance >= 0 ? '#10b981' : '#ef4444' },
-              ]}
-            >
-              {formatCurrency(balance)}
-            </Text>
-          </View>
-        </View>
-        <Text style={styles.balancePeriod}>
-          {new Date().toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })}
-        </Text>
-      </View>
-
-      {/* Filters */}
-      <View style={styles.filterRow}>
-        {(['all', 'expense', 'income'] as FilterType[]).map((f) => (
-          <TouchableOpacity
-            key={f}
-            style={[styles.filterButton, filter === f && styles.filterButtonActive]}
-            onPress={() => setFilter(f)}
-          >
-            <Text
-              style={[styles.filterText, filter === f && styles.filterTextActive]}
-            >
-              {f === 'all' ? 'Todos' : f === 'expense' ? 'Gastos' : 'Ingresos'}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* Transaction list */}
-      <FlatList
-        data={filteredTransactions}
-        keyExtractor={(item) => `${item.type}-${item.id}`}
-        renderItem={renderTransaction}
-        contentContainerStyle={styles.listContent}
+      <SectionList<TxItem, SectionData>
+        sections={sections}
+        keyExtractor={(item, index) => `${item.type}-${item.id}-${index}`}
+        renderSectionHeader={({ section }) => (
+          <TxSectionHeader label={section.title} />
+        )}
+        renderItem={({ item }) => (
+          <TransactionRow item={item} onLongPress={handleDelete} />
+        )}
+        stickySectionHeadersEnabled={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#10b981"
+            tintColor={colors.brand}
           />
+        }
+        ListHeaderComponent={
+          <>
+            {/* Summary strip — Ingresos / Gastos / Neto */}
+            <TxSummaryCards
+              ingresos={totalIncome}
+              gastos={totalExpenses}
+              neto={neto}
+            />
+
+            {/* Filter chips — Todas / Gastos / Ingresos / Cuotas */}
+            <TxFilterChips
+              activeFilter={filter}
+              onFilterChange={setFilter}
+            />
+          </>
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
@@ -320,25 +431,24 @@ export const TransactionsScreen: React.FC = () => {
             </Text>
           </View>
         }
+        contentContainerStyle={styles.listContent}
       />
     </SafeAreaView>
   )
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: colors.bg,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     gap: 16,
-  },
-  loadingLogo: {
-    width: 120,
-    height: 120,
   },
   header: {
     flexDirection: 'row',
@@ -350,98 +460,32 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: colors.text,
   },
   addButton: {
-    backgroundColor: '#10b981',
+    backgroundColor: colors.brand,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
   },
   addButtonText: {
-    color: '#ffffff',
+    color: colors.bg,
     fontWeight: '700',
     fontSize: 14,
   },
-  balanceCard: {
-    backgroundColor: '#1e293b',
-    marginHorizontal: 20,
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-  },
-  balanceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  balanceItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  balanceDivider: {
-    width: 1,
-    height: 36,
-    backgroundColor: '#334155',
-  },
-  balanceLabel: {
-    fontSize: 11,
-    color: '#94a3b8',
-    marginBottom: 4,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  balanceValue: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  balancePeriod: {
-    textAlign: 'center',
-    color: '#64748b',
-    fontSize: 12,
-    marginTop: 10,
-    textTransform: 'capitalize',
-  },
-  filterRow: {
-    flexDirection: 'row',
-    marginHorizontal: 20,
-    marginBottom: 8,
-    gap: 8,
-  },
-  filterButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#1e293b',
-  },
-  filterButtonActive: {
-    backgroundColor: '#10b981',
-  },
-  filterText: {
-    color: '#94a3b8',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  filterTextActive: {
-    color: '#ffffff',
-  },
   listContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingBottom: 100,
   },
   transactionItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#1e293b',
+    backgroundColor: colors.card,
+    marginHorizontal: 20,
+    marginBottom: 8,
     padding: 14,
     borderRadius: 10,
-    marginTop: 8,
-  },
-  transactionLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    marginRight: 12,
+    borderWidth: 1,
+    borderColor: colors.line,
   },
   transactionIcon: {
     width: 40,
@@ -453,14 +497,21 @@ const styles = StyleSheet.create({
   },
   transactionInfo: {
     flex: 1,
+    marginRight: 12,
+  },
+  transactionDescRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   transactionDesc: {
-    color: '#ffffff',
+    color: colors.text,
     fontSize: 15,
     fontWeight: '600',
+    flexShrink: 1,
   },
   transactionCategory: {
-    color: '#94a3b8',
+    color: colors.mute,
     fontSize: 12,
     marginTop: 2,
   },
@@ -468,17 +519,42 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
   },
+  // Badges
+  badgeFijo: {
+    backgroundColor: `${colors.warn}25`,
+    borderRadius: 4,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+  },
+  badgeFijoText: {
+    color: colors.warn,
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  badgeCuota: {
+    backgroundColor: colors.brandSoft,
+    borderRadius: 4,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+  },
+  badgeCuotaText: {
+    color: colors.brand,
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
   emptyContainer: {
     alignItems: 'center',
     paddingTop: 60,
   },
   emptyText: {
-    color: '#94a3b8',
+    color: colors.mute,
     fontSize: 18,
     fontWeight: '600',
   },
   emptySubtext: {
-    color: '#64748b',
+    color: colors.mute2,
     fontSize: 14,
     marginTop: 4,
   },
