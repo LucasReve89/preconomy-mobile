@@ -353,7 +353,7 @@ export const CardsScreen: React.FC = () => {
 
                 {cycle.closeDay && (
                   <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Cierre</Text>
+                    <Text style={styles.detailLabel}>Resumen</Text>
                     <Text style={styles.detailValue}>Día {cycle.closeDay}</Text>
                   </View>
                 )}
