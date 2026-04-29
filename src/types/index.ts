@@ -43,6 +43,9 @@ export interface Card {
   active: boolean
   creditLimit?: number
   currentBalance?: number
+  // Per-card color override (mirrors backend ApiCard fields used in frontend)
+  primary_color?: string | null
+  secondary_color?: string | null
 }
 
 // Expense (response from backend)
