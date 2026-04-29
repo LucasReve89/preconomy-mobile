@@ -20,6 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { apiClient } from '../../api/api-client'
 import { useAuthStore } from '../../stores/authStore'
 import { AnimatedLogo } from '../../components/AnimatedLogo'
+import { colors } from '../../theme'
 
 type Tab = 'info' | 'password'
 
@@ -246,7 +247,7 @@ export const ProfileScreen: React.FC = () => {
                     value={firstName}
                     onChangeText={setFirstName}
                     placeholder="Nombre"
-                    placeholderTextColor="#64748b"
+                    placeholderTextColor={colors.mute2}
                   />
 
                   <Text style={styles.inputLabel}>Apellido</Text>
@@ -255,7 +256,7 @@ export const ProfileScreen: React.FC = () => {
                     value={lastName}
                     onChangeText={setLastName}
                     placeholder="Apellido"
-                    placeholderTextColor="#64748b"
+                    placeholderTextColor={colors.mute2}
                   />
 
                   <Text style={styles.inputLabel}>Teléfono</Text>
@@ -264,7 +265,7 @@ export const ProfileScreen: React.FC = () => {
                     value={phone}
                     onChangeText={setPhone}
                     placeholder="Teléfono"
-                    placeholderTextColor="#64748b"
+                    placeholderTextColor={colors.mute2}
                     keyboardType="phone-pad"
                   />
 
@@ -329,7 +330,7 @@ export const ProfileScreen: React.FC = () => {
                 value={currentPassword}
                 onChangeText={setCurrentPassword}
                 placeholder="••••••••"
-                placeholderTextColor="#64748b"
+                placeholderTextColor={colors.mute2}
                 secureTextEntry
               />
 
@@ -339,7 +340,7 @@ export const ProfileScreen: React.FC = () => {
                 value={newPassword}
                 onChangeText={setNewPassword}
                 placeholder="Mínimo 8 caracteres"
-                placeholderTextColor="#64748b"
+                placeholderTextColor={colors.mute2}
                 secureTextEntry
               />
 
@@ -349,7 +350,7 @@ export const ProfileScreen: React.FC = () => {
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 placeholder="Repetir contraseña"
-                placeholderTextColor="#64748b"
+                placeholderTextColor={colors.mute2}
                 secureTextEntry
               />
 
@@ -397,7 +398,7 @@ export const ProfileScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: colors.bg,
   },
   loadingContainer: {
     flex: 1,
@@ -419,13 +420,13 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     marginBottom: 12,
     borderWidth: 2,
-    borderColor: '#10b981',
+    borderColor: colors.brand,
   },
   avatar: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#10b981',
+    backgroundColor: colors.brand,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
@@ -441,12 +442,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   profileEmail: {
-    color: '#94a3b8',
+    color: colors.mute,
     fontSize: 14,
     marginTop: 4,
   },
   profileSince: {
-    color: '#64748b',
+    color: colors.mute2,
     fontSize: 12,
     marginTop: 4,
   },
@@ -454,7 +455,7 @@ const styles = StyleSheet.create({
   tabRow: {
     flexDirection: 'row',
     marginHorizontal: 20,
-    backgroundColor: '#1e293b',
+    backgroundColor: colors.card,
     borderRadius: 10,
     padding: 4,
     marginBottom: 20,
@@ -466,10 +467,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   tabActive: {
-    backgroundColor: '#10b981',
+    backgroundColor: colors.brand,
   },
   tabText: {
-    color: '#94a3b8',
+    color: colors.mute,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -481,7 +482,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
   },
   fieldRow: {
-    backgroundColor: '#1e293b',
+    backgroundColor: colors.card,
     padding: 14,
     borderRadius: 10,
     marginBottom: 8,
@@ -490,7 +491,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   fieldLabel: {
-    color: '#94a3b8',
+    color: colors.mute,
     fontSize: 14,
   },
   fieldValue: {
@@ -502,7 +503,7 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   inputLabel: {
-    color: '#94a3b8',
+    color: colors.mute,
     fontSize: 13,
     fontWeight: '600',
     marginBottom: 6,
@@ -511,25 +512,25 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   input: {
-    backgroundColor: '#1e293b',
+    backgroundColor: colors.card,
     borderRadius: 10,
     padding: 14,
     color: '#ffffff',
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.line2,
   },
   editButton: {
-    backgroundColor: '#1e293b',
+    backgroundColor: colors.card,
     borderRadius: 10,
     padding: 14,
     alignItems: 'center',
     marginTop: 12,
     borderWidth: 1,
-    borderColor: '#10b981',
+    borderColor: colors.brand,
   },
   editButtonText: {
-    color: '#10b981',
+    color: colors.brand,
     fontSize: 15,
     fontWeight: '600',
   },
@@ -540,22 +541,22 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     flex: 1,
-    backgroundColor: '#1e293b',
+    backgroundColor: colors.card,
     borderRadius: 10,
     padding: 16,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.line2,
   },
   cancelButtonText: {
-    color: '#94a3b8',
+    color: colors.mute,
     fontSize: 16,
     fontWeight: '700',
   },
   saveButton: {
     flex: 1,
-    backgroundColor: '#10b981',
+    backgroundColor: colors.brand,
     borderRadius: 10,
     padding: 16,
     alignItems: 'center',
@@ -572,32 +573,32 @@ const styles = StyleSheet.create({
   },
   // Password requirements
   requirements: {
-    backgroundColor: '#1e293b',
+    backgroundColor: colors.card,
     borderRadius: 10,
     padding: 14,
     marginTop: 12,
     gap: 6,
   },
   req: {
-    color: '#ef4444',
+    color: colors.danger,
     fontSize: 13,
   },
   reqMet: {
-    color: '#10b981',
+    color: colors.brand,
   },
   // Logout
   logoutButton: {
     marginHorizontal: 20,
     marginTop: 28,
-    backgroundColor: '#1e293b',
+    backgroundColor: colors.card,
     borderRadius: 10,
     padding: 16,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#ef4444',
+    borderColor: colors.danger,
   },
   logoutButtonText: {
-    color: '#ef4444',
+    color: colors.danger,
     fontSize: 16,
     fontWeight: '700',
   },
