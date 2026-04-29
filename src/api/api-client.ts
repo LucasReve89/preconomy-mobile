@@ -617,5 +617,3 @@ export interface MonthlyPaymentReportDTO {
   cardCycles: MonthlyCardCycle[]
 }
 
-// Export types for mobile app
-export type { CurrencyRate, InflationData, ArgentineFinancialContext, MonthlyPaymentReportDTO, MonthlyCardCycle }
