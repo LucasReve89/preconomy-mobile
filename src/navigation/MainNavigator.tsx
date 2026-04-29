@@ -12,7 +12,7 @@
 import React from 'react'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { createStackNavigator } from '@react-navigation/stack'
-import { Platform, View, Text, StyleSheet } from 'react-native'
+import { Platform, Text } from 'react-native'
 import { colors } from '../theme'
 
 import { DashboardScreen } from '../screens/dashboard/DashboardScreen'
@@ -22,6 +22,7 @@ import { CardsScreen } from '../screens/cards/CardsScreen'
 import { AnalyticsScreen } from '../screens/analytics/AnalyticsScreen'
 import { ProfileScreen } from '../screens/profile/ProfileScreen'
 import { MoreMenuScreen } from '../screens/more/MoreMenuScreen'
+import { BudgetsScreen } from '../screens/budgets/BudgetsScreen'
 
 const TabIcon = ({ name, focused }: { name: string; focused: boolean }) => {
   const iconMap: Record<string, string> = {
@@ -54,39 +55,6 @@ const TransactionsStack = () => (
   </Stack.Navigator>
 )
 
-// ─── BudgetsScreen placeholder (Batch 5 will replace this) ─────────────────
-
-const BudgetsScreenPlaceholder: React.FC = () => (
-  <View style={placeholderStyles.container}>
-    <Text style={placeholderStyles.emoji}>💰</Text>
-    <Text style={placeholderStyles.title}>Presupuestos</Text>
-    <Text style={placeholderStyles.subtitle}>Próximamente</Text>
-  </View>
-)
-
-const placeholderStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.bg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emoji: {
-    fontSize: 48,
-    marginBottom: 12,
-  },
-  title: {
-    color: colors.text,
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 6,
-  },
-  subtitle: {
-    color: colors.mute,
-    fontSize: 14,
-  },
-})
-
 // ─── MoreStack (Analytics + Budgets behind Más tab) ────────────────────────
 
 const MoreStack = () => (
@@ -117,7 +85,7 @@ const MoreStack = () => (
     />
     <Stack.Screen
       name="Budgets"
-      component={BudgetsScreenPlaceholder}
+      component={BudgetsScreen}
       options={{ title: 'Presupuestos' }}
     />
   </Stack.Navigator>

@@ -564,6 +564,14 @@ class MobileAPIClient {
     return response.data
   }
 
+  // ---- Monthly Report ----
+  async getMonthlyReport(year: number, month: number): Promise<MonthlyPaymentReportDTO> {
+    const response = await this.get<MonthlyPaymentReportDTO>(
+      `/reports/monthly?year=${year}&month=${month}`
+    )
+    return response.data
+  }
+
   // Cache management
   clearCache(): void {
     apiCache.clear()
@@ -585,5 +593,29 @@ export const fetcher = async (url: string) => {
   return response.data
 }
 
+// ---- Monthly Report DTO ----
+// Mirrors the shape returned by GET /reports/monthly?year=&month=
+export interface MonthlyCardCycle {
+  cardName: string
+  cycleStart: string
+  cycleEnd: string
+  totalSpent: number
+  carryOver: number
+}
+
+export interface MonthlyPaymentReportDTO {
+  year: number
+  month: number
+  totalIncome: number
+  totalUniquePayments: number
+  totalRecurringPayments: number
+  totalVariableExpenses: number
+  totalCardPayments: number
+  pendingInstallments: number
+  dineroRestante: number
+  faltaPagar: number
+  cardCycles: MonthlyCardCycle[]
+}
+
 // Export types for mobile app
-export type { CurrencyRate, InflationData, ArgentineFinancialContext }
+export type { CurrencyRate, InflationData, ArgentineFinancialContext, MonthlyPaymentReportDTO, MonthlyCardCycle }
