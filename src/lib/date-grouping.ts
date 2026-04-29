@@ -14,7 +14,6 @@
 export interface GroupableTransaction {
   id: number | string
   date: string // 'YYYY-MM-DD' or ISO 8601
-  [key: string]: unknown
 }
 
 export interface DateGroup<T extends GroupableTransaction = GroupableTransaction> {

@@ -39,10 +39,7 @@ import {
   TxFilterChips,
   type TxFilterType,
 } from './components'
-import {
-  groupTransactionsByRelativeDate,
-  type GroupableTransaction,
-} from '../../lib/date-grouping'
+import { groupTransactionsByRelativeDate } from '../../lib/date-grouping'
 import type { Transaction } from '../../types'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -50,8 +47,9 @@ import type { Transaction } from '../../types'
 /**
  * Extended Transaction with originalType for Cuotas filter support.
  * originalType is populated from installment data when available.
+ * Satisfies GroupableTransaction structurally (id: number, date: string).
  */
-interface TxItem extends Transaction, GroupableTransaction {
+interface TxItem extends Transaction {
   originalType?: 'fixed' | 'variable' | 'installment' | 'income'
 }
 
